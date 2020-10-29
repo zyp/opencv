@@ -27,7 +27,7 @@ TEST_P(videoio_gstreamer, read_write)
     ASSERT_NO_THROW(cap.open(pipeline.str(), CAP_GSTREAMER));
     ASSERT_TRUE(cap.isOpened());
 
-    Mat buffer, decode_frame, gray_frame, rgb_frame;
+    Mat buffer, decode_frame, gray_frame, gray8_frame, rgb_frame;
     for (int i = 0; i < count_frames; ++i)
     {
         cap >> buffer;
@@ -37,8 +37,15 @@ TEST_P(videoio_gstreamer, read_write)
         cvtColor(decode_frame, rgb_frame, convertToRGB);
         cvtColor(rgb_frame, gray_frame, COLOR_RGB2GRAY);
 
+        if (gray_frame.depth() == CV_16U)
+        {
+            gray_frame.convertTo(gray8_frame, CV_8U, 255.0/65535.0);
+        } else {
+            gray8_frame = gray_frame;
+        }
+
         vector<Vec3f> circles;
-        HoughCircles(gray_frame, circles, HOUGH_GRADIENT, 1, gray_frame.rows/16, 100, 30, 1, 30 );
+        HoughCircles(gray8_frame, circles, HOUGH_GRADIENT, 1, gray_frame.rows/16, 100, 30, 1, 30 );
         if (circles.size() == 1)
         {
             EXPECT_NEAR(18.5, circles[0][2], 1.0);
@@ -58,17 +65,18 @@ TEST_P(videoio_gstreamer, read_write)
 }
 
 Param test_data[] = {
-    make_tuple("video/x-raw, format=BGR"  , Size(640, 480), Size(640, 480), COLOR_BGR2RGB),
-    make_tuple("video/x-raw, format=GRAY8", Size(640, 480), Size(640, 480), COLOR_GRAY2RGB),
-    make_tuple("video/x-raw, format=UYVY" , Size(640, 480), Size(640, 480), COLOR_YUV2RGB_UYVY),
-    make_tuple("video/x-raw, format=YUY2" , Size(640, 480), Size(640, 480), COLOR_YUV2RGB_YUY2),
-    make_tuple("video/x-raw, format=YVYU" , Size(640, 480), Size(640, 480), COLOR_YUV2RGB_YVYU),
-    make_tuple("video/x-raw, format=NV12" , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_NV12),
-    make_tuple("video/x-raw, format=NV21" , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_NV21),
-    make_tuple("video/x-raw, format=YV12" , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_YV12),
-    make_tuple("video/x-raw, format=I420" , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_I420),
-    make_tuple("video/x-bayer"            , Size(640, 480), Size(640, 480), COLOR_BayerBG2RGB),
-    make_tuple("jpegenc ! image/jpeg"     , Size(640, 480), Size(640, 480), COLOR_BGR2RGB)
+    make_tuple("video/x-raw, format=BGR"      , Size(640, 480), Size(640, 480), COLOR_BGR2RGB),
+    make_tuple("video/x-raw, format=GRAY8"    , Size(640, 480), Size(640, 480), COLOR_GRAY2RGB),
+    make_tuple("video/x-raw, format=GRAY16_LE", Size(640, 480), Size(640, 480), COLOR_GRAY2RGB),
+    make_tuple("video/x-raw, format=UYVY"     , Size(640, 480), Size(640, 480), COLOR_YUV2RGB_UYVY),
+    make_tuple("video/x-raw, format=YUY2"     , Size(640, 480), Size(640, 480), COLOR_YUV2RGB_YUY2),
+    make_tuple("video/x-raw, format=YVYU"     , Size(640, 480), Size(640, 480), COLOR_YUV2RGB_YVYU),
+    make_tuple("video/x-raw, format=NV12"     , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_NV12),
+    make_tuple("video/x-raw, format=NV21"     , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_NV21),
+    make_tuple("video/x-raw, format=YV12"     , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_YV12),
+    make_tuple("video/x-raw, format=I420"     , Size(640, 480), Size(640, 720), COLOR_YUV2RGB_I420),
+    make_tuple("video/x-bayer"                , Size(640, 480), Size(640, 480), COLOR_BayerBG2RGB),
+    make_tuple("jpegenc ! image/jpeg"         , Size(640, 480), Size(640, 480), COLOR_BGR2RGB)
 };
 
 INSTANTIATE_TEST_CASE_P(videoio, videoio_gstreamer, testing::ValuesIn(test_data));
